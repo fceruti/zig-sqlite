@@ -31,8 +31,7 @@ fn readOriginalData(allocator: mem.Allocator, io: Io, path: []const u8) ![]const
     var buf: [1024]u8 = undefined;
     var reader = file.reader(io, &buf);
 
-    const data = reader.interface.readAlloc(allocator, 1024 * 1024);
-    return data;
+    return try reader.interface.allocRemaining(allocator, .limited(1024 * 1024));
 }
 
 const Processor = struct {
@@ -201,6 +200,8 @@ pub fn sqlite3(allocator: mem.Allocator, io: Io, input_path: []const u8, output_
     var w = output_file.writer(io, &write_buff);
 
     try w.interface.writeAll("/* sqlite3.h edited by the zig-sqlite build script */\n");
+    try processor.dump(&w);
+    try w.interface.flush();
 }
 
 pub fn sqlite3ext(allocator: mem.Allocator, io: Io, input_path: []const u8, output_path: []const u8) !void {
@@ -238,4 +239,6 @@ pub fn sqlite3ext(allocator: mem.Allocator, io: Io, input_path: []const u8, outp
     var write_buff: [1028]u8 = undefined;
     var w = output_file.writer(io, &write_buff);
     try w.interface.writeAll("/* sqlite3ext.h edited by the zig-sqlite build script */\n");
+    try processor.dump(&w);
+    try w.interface.flush();
 }
