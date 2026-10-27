@@ -27,6 +27,18 @@ fn getTarget(original_target: ResolvedTarget) ResolvedTarget {
     return tmp;
 }
 
+fn translateSQLite(b: *std.Build, dep: *std.Build.Dependency, header: []const u8, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode) *std.Build.Module {
+    const translate_c = b.addTranslateC(.{
+        .root_source_file = b.path(header),
+        .target = target,
+        .optimize = optimize,
+    });
+    translate_c.addIncludePath(dep.path("."));
+    translate_c.addIncludePath(b.path("c"));
+
+    return translate_c.createModule();
+}
+
 const TestTarget = struct {
     query: Query,
     single_threaded: bool = false,
@@ -229,6 +241,7 @@ pub fn build(b: *std.Build) !void {
         });
         mod.addIncludePath(b.path("c"));
         mod.addIncludePath(sqlite_dep.path("."));
+        mod.addImport("sqlite3_c", translateSQLite(b, sqlite_dep, "c/sqlite3_c.h", target, optimize));
         mod.linkLibrary(lib);
 
         break :blk .{ lib, mod };
@@ -244,6 +257,7 @@ pub fn build(b: *std.Build) !void {
             .link_libc = true,
         });
         mod.addIncludePath(b.path("c"));
+        mod.addImport("sqlite3_ext_c", translateSQLite(b, sqlite_dep, "c/loadable_ext_c.h", target, optimize));
         mod.linkLibrary(lib);
 
         break :blk mod;
@@ -287,6 +301,7 @@ pub fn build(b: *std.Build) !void {
         });
         tests.root_module.addIncludePath(b.path("c"));
         tests.root_module.addIncludePath(sqlite_dep.path("."));
+        tests.root_module.addImport("sqlite3_c", translateSQLite(b, sqlite_dep, "c/sqlite3_c.h", cross_target, optimize));
         tests.root_module.linkLibrary(test_sqlite_lib);
 
         const tests_options = b.addOptions();
